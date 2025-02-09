@@ -1,20 +1,18 @@
 import os
 from groq import Groq
-from dotenv import load_dotenv  # Required for .env loading
+from dotenv import load_dotenv
 
-# Load environment variables from .env file
+# Load environment variables
 load_dotenv()
 
 # Initialize Groq client
-client = Groq()  # Automatically uses GROQ_API_KEY from .env
+client = Groq()
 
-user_input = input("You: ").strip()
-# Create chat completion with FINN system prompt
-chat_completion = client.chat.completions.create(
-    messages=[
-        {
-            "role": "system",
-            "content": """You are FINN, an advanced AI specializing in **prompt optimization**. Your purpose is to refine, enhance, and structure user prompts for **maximum clarity, precision, and AI efficiency**. You do not generate direct responses; instead, you transform prompts using expert prompt engineering techniques. Follow these detailed principles:  
+# Initialize chat history with FINN's system prompt
+chat_history = [
+    {
+        "role": "system",
+        "content": """You are FINN, an advanced AI specializing in **prompt optimization**. Your purpose is to refine, enhance, and structure user prompts for **maximum clarity, precision, and AI efficiency**. You do not generate direct responses; instead, you transform prompts using expert prompt engineering techniques. Follow these detailed principles:  
 
 **1. Understanding Intent & Context:**  
 - Analyze user input deeply to extract the core **intent** and eliminate vagueness.  
@@ -38,20 +36,53 @@ chat_completion = client.chat.completions.create(
 - Ensure optimal length—avoid excessive verbosity while keeping the necessary detail.  
 
 **4. Output Guidelines:**  
-- Provide only the **optimized version** of the user’s prompt—do not generate AI responses.  
+- Provide only the **optimized version** of the user’s prompt—do not generate any responses / answer.  
 - Adapt the refinement process dynamically based on the **type of input** (e.g., creative, technical, research-based).  
-- Preserve user intent while enhancing prompt depth, **ensuring the highest AI response quality possible**."""
-        },
-        {
-            "role": "user",
-            "content": user_input
-        }
-    ],
-    model="llama3-70b-8192",
-    temperature=0.7,
-    max_tokens=1024,
-    top_p=1,
-    stream=False,
-)
+- Preserve user intent while enhancing prompt depth, **ensuring the highest AI response quality possible**.
+- Do not answer their question at any costs. Only provide the optimized prompt for their query."""
+    }
+]
 
-print(chat_completion.choices[0].message.content)
+def main():
+    print("FINN: Ready to optimize your prompts. Type 'exit' to quit.")
+    
+    while True:
+        try:
+            # Get user input
+            user_input = input("\nUser: ").strip()
+            
+            if user_input.lower() in ['exit', 'quit']:
+                print("FINN: Session ended.")
+                break
+                
+            if not user_input:
+                continue
+
+            # Add user message to history
+            chat_history.append({"role": "user", "content": user_input})
+
+            # Get optimized prompt
+            response = client.chat.completions.create(
+                messages=chat_history,
+                model="deepseek-r1-distill-llama-70b",
+                temperature=0.8,
+                max_tokens=2000,
+                top_p=0.9
+            )
+
+            # Extract and display optimized prompt
+            optimized_prompt = response.choices[0].message.content
+            print(f"\nFINN Optimized Prompt:\n{optimized_prompt}")
+
+            # Add FINN's response to history
+            chat_history.append({"role": "assistant", "content": optimized_prompt})
+
+        except KeyboardInterrupt:
+            print("\nFINN: Session interrupted.")
+            break
+        except Exception as e:
+            print(f"\nError: {str(e)}")
+            break
+
+if __name__ == "__main__":
+    main()
