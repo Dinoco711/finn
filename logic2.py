@@ -1,9 +1,15 @@
 import os
+from flask import Flask, request, jsonify
+from flask_cors import CORS
 from groq import Groq
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
+
+# Initialize Flask app
+app = Flask(__name__)
+CORS(app)  # Enable CORS to allow frontend requests
 
 # Initialize Groq client
 client = Groq()
@@ -43,46 +49,38 @@ chat_history = [
     }
 ]
 
-def main():
-    print("FINN: Ready to optimize your prompts. Type 'exit' to quit.")
-    
-    while True:
-        try:
-            # Get user input
-            user_input = input("\nUser: ").strip()
-            
-            if user_input.lower() in ['exit', 'quit']:
-                print("FINN: Session ended.")
-                break
-                
-            if not user_input:
-                continue
+@app.route("/chatbot", methods=["POST"])
+def chatbot():
+    try:
+        data = request.json
+        user_message = data.get("message", "").strip()
 
-            # Add user message to history
-            chat_history.append({"role": "user", "content": user_input})
+        if not user_message:
+            return jsonify({"error": "No message provided"}), 400
 
-            # Get optimized prompt
-            response = client.chat.completions.create(
-                messages=chat_history,
-                model="deepseek-r1-distill-llama-70b",
-                temperature=0.8,
-                max_tokens=2000,
-                top_p=0.9
-            )
+        # Add user message to history
+        chat_history.append({"role": "user", "content": user_message})
 
-            # Extract and display optimized prompt
-            optimized_prompt = response.choices[0].message.content
-            print(f"\nFINN Optimized Prompt:\n{optimized_prompt}")
+        # Get optimized prompt
+        response = client.chat.completions.create(
+            messages=chat_history,
+            model="deepseek-r1-distill-llama-70b",
+            temperature=0.8,
+            max_tokens=2000,
+            top_p=0.9
+        )
 
-            # Add FINN's response to history
-            chat_history.append({"role": "assistant", "content": optimized_prompt})
+        # Extract optimized prompt
+        optimized_prompt = response.choices[0].message.content
 
-        except KeyboardInterrupt:
-            print("\nFINN: Session interrupted.")
-            break
-        except Exception as e:
-            print(f"\nError: {str(e)}")
-            break
+        # Add FINN's response to history
+        chat_history.append({"role": "assistant", "content": optimized_prompt})
+
+        return jsonify({"optimized_prompt": optimized_prompt})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
-    main()
+    app.run(debug=True, host="0.0.0.0", port=5000)
